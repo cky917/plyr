@@ -965,6 +965,14 @@ class Plyr {
     }
 
     /**
+     * Add event listeners once
+     * @param {string} event - Event type
+     * @param {function} callback - Callback for when event occurs
+     */
+    once(event, callback) {
+        utils.once(this.elements.container, event, callback);
+    }
+    /**
      * Remove event listeners
      * @param {string} event - Event type
      * @param {function} callback - Callback for when event occurs
@@ -1014,7 +1022,7 @@ class Plyr {
                 }
             } else {
                 // Unbind listeners
-                this.listeners.clear();
+                utils.cleanupEventListeners();
                 // Replace the container with the original element provided
                 utils.replaceElement(this.elements.original, this.elements.container);
 

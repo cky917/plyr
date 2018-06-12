@@ -491,7 +491,7 @@ var types = {
 
 var utils = {
     // cache event lisenter
-    eventListenerList: [],
+    eventListeners: [],
     // Check variable types
     is: {
         object: function object(input) {
@@ -1012,6 +1012,7 @@ var utils = {
         var toggle = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
         var passive = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
         var capture = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : false;
+        var once = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : false;
 
         // Bail if no elemetns, event, or callback
         if (utils.is.empty(elements) || utils.is.empty(event) || !utils.is.function(callback)) {
@@ -1049,17 +1050,17 @@ var utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(function (type) {
-            if (toggle) {
+            if (toggle && !once) {
                 // cache event listener
-                utils.eventListenerList.push({ elements: elements, type: type, callback: callback, options: options });
+                utils.eventListeners.push({ elements: elements, type: type, callback: callback, options: options });
             }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
     },
 
     // remove all cached event listeners
-    cleanupEventListener: function cleanupEventListener() {
-        utils.eventListenerList.forEach(function (item) {
+    cleanupEventListeners: function cleanupEventListeners() {
+        utils.eventListeners.forEach(function (item) {
             var elements = item.elements,
                 type = item.type,
                 callback = item.callback,
@@ -1078,6 +1079,26 @@ var utils = {
         var capture = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
 
         utils.toggleListener(element, events, callback, true, passive, capture);
+    },
+
+
+    // Bind event handler once
+    once: function once(element) {
+        var events = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '';
+        var callback = arguments[2];
+        var passive = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+        var capture = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
+
+        function onceCallback() {
+            utils.off(element, events, onceCallback, passive, capture);
+
+            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+                args[_key] = arguments[_key];
+            }
+
+            callback.apply(this, args);
+        }
+        utils.toggleListener(element, events, onceCallback, true, passive, capture, true);
     },
 
 
@@ -1143,8 +1164,8 @@ var utils = {
 
     // Format string
     format: function format(input) {
-        for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-            args[_key - 1] = arguments[_key];
+        for (var _len2 = arguments.length, args = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+            args[_key2 - 1] = arguments[_key2];
         }
 
         if (utils.is.empty(input)) {
@@ -1270,8 +1291,8 @@ var utils = {
     extend: function extend() {
         var target = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-        for (var _len2 = arguments.length, sources = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
-            sources[_key2 - 1] = arguments[_key2];
+        for (var _len3 = arguments.length, sources = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
+            sources[_key3 - 1] = arguments[_key3];
         }
 
         if (!sources.length) {
@@ -1720,9 +1741,8 @@ var html5 = {
                 // Restore time
                 var onLoadedMetaData = function onLoadedMetaData() {
                     player.currentTime = currentTime;
-                    player.off('loadedmetadata', onLoadedMetaData);
                 };
-                player.on('loadedmetadata', onLoadedMetaData);
+                player.once('loadedmetadata', onLoadedMetaData);
 
                 // Load new source
                 player.media.load();
@@ -2859,13 +2879,10 @@ var controls = {
                 // Revert back to auto
                 container.style.width = '';
                 container.style.height = '';
-
-                // Only listen once
-                utils.off(container, utils.transitionEndEvent, restore);
             };
 
             // Listen for the transition finishing and restore auto height/width
-            utils.on(container, utils.transitionEndEvent, restore);
+            utils.once(container, utils.transitionEndEvent, restore);
 
             // Set dimensions to target
             container.style.width = size.width + 'px';
@@ -4605,9 +4622,6 @@ var Listeners = function () {
 
             // Add touch class
             utils.toggleClass(this.player.elements.container, this.player.config.classNames.isTouch, true);
-
-            // Clean up
-            utils.off(document.body, 'touchstart', this.firstTouch);
         }
 
         // Global window & document listeners
@@ -4626,7 +4640,7 @@ var Listeners = function () {
             utils.toggleListener(document.body, 'click', this.toggleMenu, toggle);
 
             // Detect touch by events
-            utils.on(document.body, 'touchstart', this.firstTouch);
+            utils.once(document.body, 'touchstart', this.firstTouch);
         }
 
         // Container listeners
@@ -4646,7 +4660,6 @@ var Listeners = function () {
             utils.on(this.player.elements.container, 'focusout', function (event) {
                 utils.toggleClass(event.target, _this2.player.config.classNames.tabFocus, false);
             });
-
             // Add classname to tabbed elements
             utils.on(this.player.elements.container, 'keydown', function (event) {
                 if (event.keyCode !== 9) {
@@ -5126,16 +5139,6 @@ var Listeners = function () {
                     event.preventDefault();
                 }
             }, 'volume', false);
-        }
-
-        // Reset on destroy
-
-    }, {
-        key: 'clear',
-        value: function clear() {
-            this.global(false);
-            // cleanup event listener
-            utils.cleanupEventListener();
         }
     }]);
     return Listeners;
@@ -7425,6 +7428,17 @@ var Plyr = function () {
         }
 
         /**
+         * Add event listeners once
+         * @param {string} event - Event type
+         * @param {function} callback - Callback for when event occurs
+         */
+
+    }, {
+        key: 'once',
+        value: function once(event, callback) {
+            utils.once(this.elements.container, event, callback);
+        }
+        /**
          * Remove event listeners
          * @param {string} event - Event type
          * @param {function} callback - Callback for when event occurs
@@ -7484,7 +7498,7 @@ var Plyr = function () {
                     }
                 } else {
                     // Unbind listeners
-                    _this2.listeners.clear();
+                    utils.cleanupEventListeners();
                     // Replace the container with the original element provided
                     utils.replaceElement(_this2.elements.original, _this2.elements.container);
 

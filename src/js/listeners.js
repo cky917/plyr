@@ -197,8 +197,6 @@ class Listeners {
         // Add touch class
         utils.toggleClass(this.player.elements.container, this.player.config.classNames.isTouch, true);
 
-        // Clean up
-        utils.off(document.body, 'touchstart', this.firstTouch);
     }
 
     // Global window & document listeners
@@ -212,7 +210,7 @@ class Listeners {
         utils.toggleListener(document.body, 'click', this.toggleMenu, toggle);
 
         // Detect touch by events
-        utils.on(document.body, 'touchstart', this.firstTouch);
+        utils.once(document.body, 'touchstart', this.firstTouch);
     }
 
     // Container listeners
@@ -227,7 +225,6 @@ class Listeners {
         utils.on(this.player.elements.container, 'focusout', event => {
             utils.toggleClass(event.target, this.player.config.classNames.tabFocus, false);
         });
-
         // Add classname to tabbed elements
         utils.on(this.player.elements.container, 'keydown', event => {
             if (event.keyCode !== 9) {
@@ -726,13 +723,6 @@ class Listeners {
             'volume',
             false,
         );
-    }
-
-    // Reset on destroy
-    clear() {
-        this.global(false);
-        // cleanup event listener
-        utils.cleanupEventListener();
     }
 }
 

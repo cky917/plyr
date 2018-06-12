@@ -9,7 +9,7 @@ import { providers } from './types';
 
 const utils = {
     // cache event lisenter
-    eventListenerList:[],
+    eventListeners:[],
     // Check variable types
     is: {
         object(input) {
@@ -503,7 +503,7 @@ const utils = {
     },
 
     // Toggle event listener
-    toggleListener(elements, event, callback, toggle = false, passive = true, capture = false) {
+    toggleListener(elements, event, callback, toggle = false, passive = true, capture = false, once = false) {
         // Bail if no elemetns, event, or callback
         if (utils.is.empty(elements) || utils.is.empty(event) || !utils.is.function(callback)) {
             return;
@@ -540,16 +540,16 @@ const utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(type => {
-            if (toggle) {
+            if (toggle && !once) {
                 // cache event listener
-                utils.eventListenerList.push({ elements, type, callback, options });
+                utils.eventListeners.push({ elements, type, callback, options });
             }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
     },
     // remove all cached event listeners
-    cleanupEventListener() {
-        utils.eventListenerList.forEach(item => {
+    cleanupEventListeners() {
+        utils.eventListeners.forEach(item => {
             const { elements, type, callback, options } = item;
             elements.removeEventListener(type, callback, options);
         });
@@ -558,6 +558,15 @@ const utils = {
     // Bind event handler
     on(element, events = '', callback, passive = true, capture = false) {
         utils.toggleListener(element, events, callback, true, passive, capture);
+    },
+
+    // Bind event handler once
+    once(element, events = '', callback, passive = true, capture = false) {
+        function onceCallback(...args) {
+            utils.off(element, events, onceCallback, passive, capture);
+            callback.apply(this, args);
+        }
+        utils.toggleListener(element, events, onceCallback, true, passive, capture, true);
     },
 
     // Unbind event handler
