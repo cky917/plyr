@@ -8,8 +8,6 @@ import support from './support';
 import { providers } from './types';
 
 const utils = {
-    // cache event lisenter
-    eventListeners:[],
     // Check variable types
     is: {
         object(input) {
@@ -496,7 +494,7 @@ const utils = {
         };
 
         if (toggle) {
-            utils.on(this.elements.container, 'keydown', trap, false);
+            utils.on.call(this, this.elements.container, 'keydown', trap, false);
         } else {
             utils.off(this.elements.container, 'keydown', trap, false);
         }
@@ -514,7 +512,7 @@ const utils = {
             // Create listener for each node
             Array.from(elements).forEach(element => {
                 if (element instanceof Node) {
-                    utils.toggleListener.call(null, element, event, callback, toggle, passive, capture);
+                    utils.toggleListener.call(this, element, event, callback, toggle, passive, capture);
                 }
             });
 
@@ -540,24 +538,26 @@ const utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(type => {
-            if (toggle && !once) {
+            if (this && this._eventListeners && toggle && !once) {
                 // cache event listener
-                utils.eventListeners.push({ elements, type, callback, options });
+                this._eventListeners.push({ elements, type, callback, options });
             }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
     },
     // remove all cached event listeners
     cleanupEventListeners() {
-        utils.eventListeners.forEach(item => {
-            const { elements, type, callback, options } = item;
-            elements.removeEventListener(type, callback, options);
-        });
-        utils.eventListenerList = [];
+        if (this && this._eventListeners) {
+            this._eventListeners.forEach(item => {
+                const { elements, type, callback, options } = item;
+                elements.removeEventListener(type, callback, options);
+            });
+            this._eventListeners = [];
+        }
     },
     // Bind event handler
     on(element, events = '', callback, passive = true, capture = false) {
-        utils.toggleListener(element, events, callback, true, passive, capture);
+        utils.toggleListener.call(this, element, events, callback, true, passive, capture);
     },
 
     // Bind event handler once

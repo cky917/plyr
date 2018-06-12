@@ -5873,8 +5873,6 @@ var types = {
 // ==========================================================================
 
 var utils = {
-    // cache event lisenter
-    eventListeners: [],
     // Check variable types
     is: {
         object: function object(input) {
@@ -6383,7 +6381,7 @@ var utils = {
         };
 
         if (toggle) {
-            utils.on(this.elements.container, 'keydown', trap, false);
+            utils.on.call(this, this.elements.container, 'keydown', trap, false);
         } else {
             utils.off(this.elements.container, 'keydown', trap, false);
         }
@@ -6394,6 +6392,9 @@ var utils = {
     toggleListener: function toggleListener(elements, event, callback) {
         var toggle = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
         var passive = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
+
+        var _this = this;
+
         var capture = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : false;
         var once = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : false;
 
@@ -6407,7 +6408,7 @@ var utils = {
             // Create listener for each node
             Array.from(elements).forEach(function (element) {
                 if (element instanceof Node) {
-                    utils.toggleListener.call(null, element, event, callback, toggle, passive, capture);
+                    utils.toggleListener.call(_this, element, event, callback, toggle, passive, capture);
                 }
             });
 
@@ -6433,25 +6434,28 @@ var utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(function (type) {
-            if (toggle && !once) {
+            if (_this && _this._eventListeners && toggle && !once) {
                 // cache event listener
-                utils.eventListeners.push({ elements: elements, type: type, callback: callback, options: options });
+                _this._eventListeners.push({ elements: elements, type: type, callback: callback, options: options });
             }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
+        console.log(this && this._eventListeners);
     },
 
     // remove all cached event listeners
     cleanupEventListeners: function cleanupEventListeners() {
-        utils.eventListeners.forEach(function (item) {
-            var elements = item.elements,
-                type = item.type,
-                callback = item.callback,
-                options = item.options;
+        if (this && this._eventListeners) {
+            this._eventListeners.forEach(function (item) {
+                var elements = item.elements,
+                    type = item.type,
+                    callback = item.callback,
+                    options = item.options;
 
-            elements.removeEventListener(type, callback, options);
-        });
-        utils.eventListenerList = [];
+                elements.removeEventListener(type, callback, options);
+            });
+            this._eventListeners = [];
+        }
     },
 
     // Bind event handler
@@ -6461,7 +6465,7 @@ var utils = {
         var passive = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
         var capture = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
 
-        utils.toggleListener(element, events, callback, true, passive, capture);
+        utils.toggleListener.call(this, element, events, callback, true, passive, capture);
     },
 
 
@@ -8724,7 +8728,7 @@ var captions = {
         // Watch changes to textTracks and update captions menu
         if (this.isHTML5) {
             var trackEvents = this.config.captions.update ? 'addtrack removetrack' : 'removetrack';
-            utils.on(this.media.textTracks, trackEvents, captions.update.bind(this));
+            utils.on.call(this, this.media.textTracks, trackEvents, captions.update.bind(this));
         }
 
         // Update available languages in list next tick (the event must not be triggered before the listeners)
@@ -8755,7 +8759,7 @@ var captions = {
                 track.mode = 'hidden';
 
                 // Add event listener for cue changes
-                utils.on(track, 'cuechange', function () {
+                utils.on.call(_this, track, 'cuechange', function () {
                     return captions.updateCues.call(_this);
                 });
             });
@@ -9406,13 +9410,13 @@ var Fullscreen = function () {
 
         // Register event listeners
         // Handle event (incase user presses escape etc)
-        utils.on(document, this.prefix === 'ms' ? 'MSFullscreenChange' : this.prefix + 'fullscreenchange', function () {
+        utils.on.call(player, document, this.prefix === 'ms' ? 'MSFullscreenChange' : this.prefix + 'fullscreenchange', function () {
             // TODO: Filter for target??
             onChange.call(_this);
         });
 
         // Fullscreen toggle on double click
-        utils.on(this.player.elements.container, 'dblclick', function (event) {
+        utils.on.call(player, this.player.elements.container, 'dblclick', function (event) {
             // Ignore double click in controls
             if (utils.is.element(_this.player.elements.controls) && _this.player.elements.controls.contains(event.target)) {
                 return;
@@ -9838,6 +9842,7 @@ var Listeners = function () {
         this.player = player;
         this.lastKey = null;
 
+        this.on = utils.on.bind(plyaer);
         this.handleKey = this.handleKey.bind(this);
         this.toggleMenu = this.toggleMenu.bind(this);
         this.firstTouch = this.firstTouch.bind(this);
@@ -10016,11 +10021,11 @@ var Listeners = function () {
 
             // Keyboard shortcuts
             if (this.player.config.keyboard.global) {
-                utils.toggleListener(window, 'keydown keyup', this.handleKey, toggle, false);
+                utils.toggleListener.call(this.player, window, 'keydown keyup', this.handleKey, toggle, false);
             }
 
             // Click anywhere closes menu
-            utils.toggleListener(document.body, 'click', this.toggleMenu, toggle);
+            utils.toggleListener.call(this.player, document.body, 'click', this.toggleMenu, toggle);
 
             // Detect touch by events
             utils.once(document.body, 'touchstart', this.firstTouch);
@@ -10035,16 +10040,16 @@ var Listeners = function () {
 
             // Keyboard shortcuts
             if (!this.player.config.keyboard.global && this.player.config.keyboard.focused) {
-                utils.on(this.player.elements.container, 'keydown keyup', this.handleKey, false);
+                this.on(this.player.elements.container, 'keydown keyup', this.handleKey, false);
             }
 
             // Detect tab focus
             // Remove class on blur/focusout
-            utils.on(this.player.elements.container, 'focusout', function (event) {
+            this.on(this.player.elements.container, 'focusout', function (event) {
                 utils.toggleClass(event.target, _this2.player.config.classNames.tabFocus, false);
             });
             // Add classname to tabbed elements
-            utils.on(this.player.elements.container, 'keydown', function (event) {
+            this.on(this.player.elements.container, 'keydown', function (event) {
                 if (event.keyCode !== 9) {
                     return;
                 }
@@ -10057,7 +10062,7 @@ var Listeners = function () {
             });
 
             // Toggle controls on mouse events and entering fullscreen
-            utils.on(this.player.elements.container, 'mousemove mouseleave touchstart touchmove enterfullscreen exitfullscreen', function (event) {
+            this.on(this.player.elements.container, 'mousemove mouseleave touchstart touchmove enterfullscreen exitfullscreen', function (event) {
                 var controls$$1 = _this2.player.elements.controls;
 
                 // Remove button states for fullscreen
@@ -10095,24 +10100,24 @@ var Listeners = function () {
             var _this3 = this;
 
             // Time change on media
-            utils.on(this.player.media, 'timeupdate seeking seeked', function (event) {
+            this.on(this.player.media, 'timeupdate seeking seeked', function (event) {
                 return controls.timeUpdate.call(_this3.player, event);
             });
 
             // Display duration
-            utils.on(this.player.media, 'durationchange loadeddata loadedmetadata', function (event) {
+            this.on(this.player.media, 'durationchange loadeddata loadedmetadata', function (event) {
                 return controls.durationUpdate.call(_this3.player, event);
             });
 
             // Check for audio tracks on load
             // We can't use `loadedmetadata` as it doesn't seem to have audio tracks at that point
-            utils.on(this.player.media, 'loadeddata', function () {
+            this.on(this.player.media, 'loadeddata', function () {
                 utils.toggleHidden(_this3.player.elements.volume, !_this3.player.hasAudio);
                 utils.toggleHidden(_this3.player.elements.buttons.mute, !_this3.player.hasAudio);
             });
 
             // Handle the media finishing
-            utils.on(this.player.media, 'ended', function () {
+            this.on(this.player.media, 'ended', function () {
                 // Show poster on end
                 if (_this3.player.isHTML5 && _this3.player.isVideo && _this3.player.config.resetOnEnd) {
                     // Restart
@@ -10121,28 +10126,28 @@ var Listeners = function () {
             });
 
             // Check for buffer progress
-            utils.on(this.player.media, 'progress playing seeking seeked', function (event) {
+            this.on(this.player.media, 'progress playing seeking seeked', function (event) {
                 return controls.updateProgress.call(_this3.player, event);
             });
 
             // Handle volume changes
-            utils.on(this.player.media, 'volumechange', function (event) {
+            this.on(this.player.media, 'volumechange', function (event) {
                 return controls.updateVolume.call(_this3.player, event);
             });
 
             // Handle play/pause
-            utils.on(this.player.media, 'playing play pause ended emptied timeupdate', function (event) {
+            this.on(this.player.media, 'playing play pause ended emptied timeupdate', function (event) {
                 return ui.checkPlaying.call(_this3.player, event);
             });
 
             // Loading state
-            utils.on(this.player.media, 'waiting canplay seeked playing', function (event) {
+            this.on(this.player.media, 'waiting canplay seeked playing', function (event) {
                 return ui.checkLoading.call(_this3.player, event);
             });
 
             // If autoplay, then load advertisement if required
             // TODO: Show some sort of loading state while the ad manager loads else there's a delay before ad shows
-            utils.on(this.player.media, 'playing', function () {
+            this.on(this.player.media, 'playing', function () {
                 if (!_this3.player.ads) {
                     return;
                 }
@@ -10169,7 +10174,7 @@ var Listeners = function () {
                 }
 
                 // On click play, pause ore restart
-                utils.on(wrapper, 'click', function () {
+                this.on(wrapper, 'click', function () {
                     // Touch devices will just show controls (if we're hiding controls)
                     if (_this3.player.config.hideControls && _this3.player.touch && !_this3.player.paused) {
                         return;
@@ -10188,19 +10193,19 @@ var Listeners = function () {
 
             // Disable right click
             if (this.player.supported.ui && this.player.config.disableContextMenu) {
-                utils.on(this.player.elements.wrapper, 'contextmenu', function (event) {
+                this.on(this.player.elements.wrapper, 'contextmenu', function (event) {
                     event.preventDefault();
                 }, false);
             }
 
             // Volume change
-            utils.on(this.player.media, 'volumechange', function () {
+            this.on(this.player.media, 'volumechange', function () {
                 // Save to storage
                 _this3.player.storage.set({ volume: _this3.player.volume, muted: _this3.player.muted });
             });
 
             // Speed change
-            utils.on(this.player.media, 'ratechange', function () {
+            this.on(this.player.media, 'ratechange', function () {
                 // Update UI
                 controls.updateSetting.call(_this3.player, 'speed');
 
@@ -10209,19 +10214,19 @@ var Listeners = function () {
             });
 
             // Quality request
-            utils.on(this.player.media, 'qualityrequested', function (event) {
+            this.on(this.player.media, 'qualityrequested', function (event) {
                 // Save to storage
                 _this3.player.storage.set({ quality: event.detail.quality });
             });
 
             // Quality change
-            utils.on(this.player.media, 'qualitychange', function (event) {
+            this.on(this.player.media, 'qualitychange', function (event) {
                 // Update UI
                 controls.updateSetting.call(_this3.player, 'quality', null, event.detail.quality);
             });
 
             // Caption language change
-            utils.on(this.player.media, 'languagechange', function () {
+            this.on(this.player.media, 'languagechange', function () {
                 // Update UI
                 controls.updateSetting.call(_this3.player, 'captions');
 
@@ -10230,7 +10235,7 @@ var Listeners = function () {
             });
 
             // Captions toggle
-            utils.on(this.player.media, 'captionsenabled captionsdisabled', function () {
+            this.on(this.player.media, 'captionsenabled captionsdisabled', function () {
                 // Update UI
                 controls.updateSetting.call(_this3.player, 'captions');
 
@@ -10240,7 +10245,7 @@ var Listeners = function () {
 
             // Proxy events to container
             // Bubble up key events for Edge
-            utils.on(this.player.media, this.player.config.events.concat(['keyup', 'keydown']).join(' '), function (event) {
+            this.on(this.player.media, this.player.config.events.concat(['keyup', 'keydown']).join(' '), function (event) {
                 var _event$detail = event.detail,
                     detail = _event$detail === undefined ? {} : _event$detail;
 
@@ -10288,7 +10293,7 @@ var Listeners = function () {
                 var customHandler = _this4.player.config.listeners[customHandlerKey];
                 var hasCustomHandler = utils.is.function(customHandler);
 
-                utils.on(element, type, function (event) {
+                _this4.on(element, type, function (event) {
                     return proxy(event, defaultHandler, customHandlerKey);
                 }, passive && !hasCustomHandler);
             };
@@ -12516,6 +12521,8 @@ var Plyr = function () {
             return;
         }
 
+        this._eventListeners = [];
+
         // Create listeners
         this.listeners = new Listeners(this);
 
@@ -12542,7 +12549,7 @@ var Plyr = function () {
 
         // Listen for events if debugging
         if (this.config.debug) {
-            utils.on(this.elements.container, this.config.events.join(' '), function (event) {
+            utils.on.call(this, this.elements.container, this.config.events.join(' '), function (event) {
                 _this.debug.log('event: ' + event.type);
             });
         }
@@ -12807,7 +12814,7 @@ var Plyr = function () {
     }, {
         key: 'on',
         value: function on(event, callback) {
-            utils.on(this.elements.container, event, callback);
+            utils.on.call(this, this.elements.container, event, callback);
         }
 
         /**
@@ -12881,7 +12888,7 @@ var Plyr = function () {
                     }
                 } else {
                     // Unbind listeners
-                    utils.cleanupEventListeners();
+                    utils.cleanupEventListeners.call(_this2);
                     // Replace the container with the original element provided
                     utils.replaceElement(_this2.elements.original, _this2.elements.container);
 

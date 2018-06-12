@@ -203,7 +203,7 @@ class Listeners {
     global(toggle = true) {
         // Keyboard shortcuts
         if (this.player.config.keyboard.global) {
-            utils.toggleListener(window, 'keydown keyup', this.handleKey, toggle, false);
+            utils.toggleListener.call(this.player, window, 'keydown keyup', this.handleKey, toggle, false);
         }
 
         // Click anywhere closes menu
@@ -217,16 +217,16 @@ class Listeners {
     container() {
         // Keyboard shortcuts
         if (!this.player.config.keyboard.global && this.player.config.keyboard.focused) {
-            utils.on(this.player.elements.container, 'keydown keyup', this.handleKey, false);
+            utils.on.call(this.player, this.player.elements.container, 'keydown keyup', this.handleKey, false);
         }
 
         // Detect tab focus
         // Remove class on blur/focusout
-        utils.on(this.player.elements.container, 'focusout', event => {
+        utils.on.call(this.player, this.player.elements.container, 'focusout', event => {
             utils.toggleClass(event.target, this.player.config.classNames.tabFocus, false);
         });
         // Add classname to tabbed elements
-        utils.on(this.player.elements.container, 'keydown', event => {
+        utils.on.call(this.player, this.player.elements.container, 'keydown', event => {
             if (event.keyCode !== 9) {
                 return;
             }
@@ -239,7 +239,7 @@ class Listeners {
         });
 
         // Toggle controls on mouse events and entering fullscreen
-        utils.on(this.player.elements.container, 'mousemove mouseleave touchstart touchmove enterfullscreen exitfullscreen', event => {
+        utils.on.call(this.player, this.player.elements.container, 'mousemove mouseleave touchstart touchmove enterfullscreen exitfullscreen', event => {
             const { controls } = this.player.elements;
 
             // Remove button states for fullscreen
@@ -273,20 +273,20 @@ class Listeners {
     // Listen for media events
     media() {
         // Time change on media
-        utils.on(this.player.media, 'timeupdate seeking seeked', event => controls.timeUpdate.call(this.player, event));
+        utils.on.call(this.player, this.player.media, 'timeupdate seeking seeked', event => controls.timeUpdate.call(this.player, event));
 
         // Display duration
-        utils.on(this.player.media, 'durationchange loadeddata loadedmetadata', event => controls.durationUpdate.call(this.player, event));
+        utils.on.call(this.player, this.player.media, 'durationchange loadeddata loadedmetadata', event => controls.durationUpdate.call(this.player, event));
 
         // Check for audio tracks on load
         // We can't use `loadedmetadata` as it doesn't seem to have audio tracks at that point
-        utils.on(this.player.media, 'loadeddata', () => {
+        utils.on.call(this.player, this.player.media, 'loadeddata', () => {
             utils.toggleHidden(this.player.elements.volume, !this.player.hasAudio);
             utils.toggleHidden(this.player.elements.buttons.mute, !this.player.hasAudio);
         });
 
         // Handle the media finishing
-        utils.on(this.player.media, 'ended', () => {
+        utils.on.call(this.player, this.player.media, 'ended', () => {
             // Show poster on end
             if (this.player.isHTML5 && this.player.isVideo && this.player.config.resetOnEnd) {
                 // Restart
@@ -295,20 +295,20 @@ class Listeners {
         });
 
         // Check for buffer progress
-        utils.on(this.player.media, 'progress playing seeking seeked', event => controls.updateProgress.call(this.player, event));
+        utils.on.call(this.player, this.player.media, 'progress playing seeking seeked', event => controls.updateProgress.call(this.player, event));
 
         // Handle volume changes
-        utils.on(this.player.media, 'volumechange', event => controls.updateVolume.call(this.player, event));
+        utils.on.call(this.player, this.player.media, 'volumechange', event => controls.updateVolume.call(this.player, event));
 
         // Handle play/pause
-        utils.on(this.player.media, 'playing play pause ended emptied timeupdate', event => ui.checkPlaying.call(this.player, event));
+        utils.on.call(this.player, this.player.media, 'playing play pause ended emptied timeupdate', event => ui.checkPlaying.call(this.player, event));
 
         // Loading state
-        utils.on(this.player.media, 'waiting canplay seeked playing', event => ui.checkLoading.call(this.player, event));
+        utils.on.call(this.player, this.player.media, 'waiting canplay seeked playing', event => ui.checkLoading.call(this.player, event));
 
         // If autoplay, then load advertisement if required
         // TODO: Show some sort of loading state while the ad manager loads else there's a delay before ad shows
-        utils.on(this.player.media, 'playing', () => {
+        utils.on.call(this.player, this.player.media, 'playing', () => {
             if (!this.player.ads) {
                 return;
             }
@@ -331,7 +331,7 @@ class Listeners {
             }
 
             // On click play, pause ore restart
-            utils.on(wrapper, 'click', () => {
+            utils.on.call(this.player, wrapper, 'click', () => {
                 // Touch devices will just show controls (if we're hiding controls)
                 if (this.player.config.hideControls && this.player.touch && !this.player.paused) {
                     return;
@@ -350,7 +350,7 @@ class Listeners {
 
         // Disable right click
         if (this.player.supported.ui && this.player.config.disableContextMenu) {
-            utils.on(
+            utils.on.call(this.player,
                 this.player.elements.wrapper,
                 'contextmenu',
                 event => {
@@ -361,13 +361,13 @@ class Listeners {
         }
 
         // Volume change
-        utils.on(this.player.media, 'volumechange', () => {
+        utils.on.call(this.player, this.player.media, 'volumechange', () => {
             // Save to storage
             this.player.storage.set({ volume: this.player.volume, muted: this.player.muted });
         });
 
         // Speed change
-        utils.on(this.player.media, 'ratechange', () => {
+        utils.on.call(this.player, this.player.media, 'ratechange', () => {
             // Update UI
             controls.updateSetting.call(this.player, 'speed');
 
@@ -376,19 +376,19 @@ class Listeners {
         });
 
         // Quality request
-        utils.on(this.player.media, 'qualityrequested', event => {
+        utils.on.call(this.player, this.player.media, 'qualityrequested', event => {
             // Save to storage
             this.player.storage.set({ quality: event.detail.quality });
         });
 
         // Quality change
-        utils.on(this.player.media, 'qualitychange', event => {
+        utils.on.call(this.player, this.player.media, 'qualitychange', event => {
             // Update UI
             controls.updateSetting.call(this.player, 'quality', null, event.detail.quality);
         });
 
         // Caption language change
-        utils.on(this.player.media, 'languagechange', () => {
+        utils.on.call(this.player, this.player.media, 'languagechange', () => {
             // Update UI
             controls.updateSetting.call(this.player, 'captions');
 
@@ -397,7 +397,7 @@ class Listeners {
         });
 
         // Captions toggle
-        utils.on(this.player.media, 'captionsenabled captionsdisabled', () => {
+        utils.on.call(this.player, this.player.media, 'captionsenabled captionsdisabled', () => {
             // Update UI
             controls.updateSetting.call(this.player, 'captions');
 
@@ -407,7 +407,7 @@ class Listeners {
 
         // Proxy events to container
         // Bubble up key events for Edge
-        utils.on(this.player.media, this.player.config.events.concat([
+        utils.on.call(this.player, this.player.media, this.player.config.events.concat([
             'keyup',
             'keydown',
         ]).join(' '), event => {
@@ -449,7 +449,7 @@ class Listeners {
             const customHandler = this.player.config.listeners[customHandlerKey];
             const hasCustomHandler = utils.is.function(customHandler);
 
-            utils.on(element, type, event => proxy(event, defaultHandler, customHandlerKey), passive && !hasCustomHandler);
+            utils.on.call(this.player, element, type, event => proxy(event, defaultHandler, customHandlerKey), passive && !hasCustomHandler);
         };
 
         // Play/pause toggle
