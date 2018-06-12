@@ -245,7 +245,7 @@ class Plyr {
             return;
         }
 
-        this._eventListeners = [];
+        this.eventListeners = [];
 
         // Create listeners
         this.listeners = new Listeners(this);

@@ -538,21 +538,21 @@ const utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(type => {
-            if (this && this._eventListeners && toggle && !once) {
+            if (this && this.eventListeners && toggle && !once) {
                 // cache event listener
-                this._eventListeners.push({ elements, type, callback, options });
+                this.eventListeners.push({ elements, type, callback, options });
             }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
     },
     // remove all cached event listeners
     cleanupEventListeners() {
-        if (this && this._eventListeners) {
-            this._eventListeners.forEach(item => {
+        if (this && this.eventListeners) {
+            this.eventListeners.forEach(item => {
                 const { elements, type, callback, options } = item;
                 elements.removeEventListener(type, callback, options);
             });
-            this._eventListeners = [];
+            this.eventListeners = [];
         }
     },
     // Bind event handler
