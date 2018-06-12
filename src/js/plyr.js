@@ -1015,7 +1015,6 @@ class Plyr {
             } else {
                 // Unbind listeners
                 this.listeners.clear();
-
                 // Replace the container with the original element provided
                 utils.replaceElement(this.elements.original, this.elements.container);
 

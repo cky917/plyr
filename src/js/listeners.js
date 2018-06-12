@@ -731,6 +731,8 @@ class Listeners {
     // Reset on destroy
     clear() {
         this.global(false);
+        // cleanup event listener
+        utils.cleanupEventListener();
     }
 }
 

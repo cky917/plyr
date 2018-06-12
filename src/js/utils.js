@@ -8,6 +8,8 @@ import support from './support';
 import { providers } from './types';
 
 const utils = {
+    // cache event lisenter
+    eventListenerList:[],
     // Check variable types
     is: {
         object(input) {
@@ -538,10 +540,21 @@ const utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(type => {
+            if (toggle) {
+                // cache event listener
+                utils.eventListenerList.push({ elements, type, callback, options });
+            }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
     },
-
+    // remove all cached event listeners
+    cleanupEventListener() {
+        utils.eventListenerList.forEach(item => {
+            const { elements, type, callback, options } = item;
+            elements.removeEventListener(type, callback, options);
+        });
+        utils.eventListenerList = [];
+    },
     // Bind event handler
     on(element, events = '', callback, passive = true, capture = false) {
         utils.toggleListener(element, events, callback, true, passive, capture);

@@ -5873,6 +5873,8 @@ var types = {
 // ==========================================================================
 
 var utils = {
+    // cache event lisenter
+    eventListenerList: [],
     // Check variable types
     is: {
         object: function object(input) {
@@ -6430,10 +6432,25 @@ var utils = {
 
         // If a single node is passed, bind the event listener
         events.forEach(function (type) {
+            if (toggle) {
+                utils.eventListenerList.push({ elements: elements, type: type, callback: callback, options: options });
+            }
             elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
         });
     },
 
+    // remove all cached event listeners
+    cleanupEventListener: function cleanupEventListener() {
+        utils.eventListenerList.forEach(function (item) {
+            var elements = item.elements,
+                type = item.type,
+                callback = item.callback,
+                options = item.options;
+
+            elements.removeEventListener(type, callback, options);
+        });
+        utils.eventListenerList = [];
+    },
 
     // Bind event handler
     on: function on(element) {
@@ -7014,41 +7031,27 @@ var support = {
 
 var html5 = {
     getSources: function getSources() {
+        var _this = this;
+
         if (!this.isHTML5) {
-            return null;
+            return [];
         }
 
-        return this.media.querySelectorAll('source');
+        var sources = Array.from(this.media.querySelectorAll('source'));
+
+        // Filter out unsupported sources
+        return sources.filter(function (source) {
+            return support.mime.call(_this, source.getAttribute('type'));
+        });
     },
 
 
     // Get quality levels
     getQualityOptions: function getQualityOptions() {
-        if (!this.isHTML5) {
-            return null;
-        }
-
-        // Get sources
-        var sources = html5.getSources.call(this);
-
-        if (utils.is.empty(sources)) {
-            return null;
-        }
-
-        // Get <source> with size attribute
-        var sizes = Array.from(sources).filter(function (source) {
-            return !utils.is.empty(source.getAttribute('size'));
-        });
-
-        // If none, bail
-        if (utils.is.empty(sizes)) {
-            return null;
-        }
-
-        // Reduce to unique list
-        return utils.dedupe(sizes.map(function (source) {
+        // Get sizes from <source> elements
+        return html5.getSources.call(this).map(function (source) {
             return Number(source.getAttribute('size'));
-        }));
+        }).filter(Boolean);
     },
     extend: function extend() {
         if (!this.isHTML5) {
@@ -7063,52 +7066,30 @@ var html5 = {
                 // Get sources
                 var sources = html5.getSources.call(player);
 
-                if (utils.is.empty(sources)) {
-                    return null;
-                }
-
-                var matches = Array.from(sources).filter(function (source) {
+                var _sources$filter = sources.filter(function (source) {
                     return source.getAttribute('src') === player.source;
-                });
+                }),
+                    _sources$filter2 = slicedToArray(_sources$filter, 1),
+                    source = _sources$filter2[0];
 
-                if (utils.is.empty(matches)) {
-                    return null;
-                }
+                // Return size, if match is found
 
-                return Number(matches[0].getAttribute('size'));
+
+                return source && Number(source.getAttribute('size'));
             },
             set: function set(input) {
                 // Get sources
                 var sources = html5.getSources.call(player);
 
-                if (utils.is.empty(sources)) {
-                    return;
-                }
-
-                // Get matches for requested size
-                var matches = Array.from(sources).filter(function (source) {
+                // Get first match for requested size
+                var source = sources.find(function (source) {
                     return Number(source.getAttribute('size')) === input;
                 });
 
-                // No matches for requested size
-                if (utils.is.empty(matches)) {
+                // No matching source found
+                if (!source) {
                     return;
                 }
-
-                // Get supported sources
-                var supported = matches.filter(function (source) {
-                    return support.mime.call(player, source.getAttribute('type'));
-                });
-
-                // No supported sources
-                if (utils.is.empty(supported)) {
-                    return;
-                }
-
-                // Trigger change event
-                utils.dispatchEvent.call(player, player.media, 'qualityrequested', false, {
-                    quality: input
-                });
 
                 // Get current state
                 var currentTime = player.currentTime,
@@ -7116,7 +7097,7 @@ var html5 = {
 
                 // Set new source
 
-                player.media.src = supported[0].getAttribute('src');
+                player.media.src = source.getAttribute('src');
 
                 // Restore time
                 var onLoadedMetaData = function onLoadedMetaData() {
@@ -7826,7 +7807,6 @@ var controls = {
 
 
     // Set the quality menu
-    // TODO: Vimeo support
     setQualityMenu: function setQualityMenu(options) {
         var _this3 = this;
 
@@ -7838,9 +7818,9 @@ var controls = {
         var type = 'quality';
         var list = this.elements.settings.panes.quality.querySelector('ul');
 
-        // Set options if passed and filter based on config
+        // Set options if passed and filter based on uniqueness and config
         if (utils.is.array(options)) {
-            this.options.quality = options.filter(function (quality) {
+            this.options.quality = utils.dedupe(options).filter(function (quality) {
                 return _this3.config.quality.options.includes(quality);
             });
         }
@@ -10936,52 +10916,29 @@ var vimeo = {
 
 // Standardise YouTube quality unit
 function mapQualityUnit(input) {
-    switch (input) {
-        case 'hd2160':
-            return 2160;
+    var qualities = {
+        hd2160: 2160,
+        hd1440: 1440,
+        hd1080: 1080,
+        hd720: 720,
+        large: 480,
+        medium: 360,
+        small: 240,
+        tiny: 144
+    };
 
-        case 2160:
-            return 'hd2160';
+    var entry = Object.entries(qualities).find(function (entry) {
+        return entry.includes(input);
+    });
 
-        case 'hd1440':
-            return 1440;
-
-        case 1440:
-            return 'hd1440';
-
-        case 'hd1080':
-            return 1080;
-
-        case 1080:
-            return 'hd1080';
-
-        case 'hd720':
-            return 720;
-
-        case 720:
-            return 'hd720';
-
-        case 'large':
-            return 480;
-
-        case 480:
-            return 'large';
-
-        case 'medium':
-            return 360;
-
-        case 360:
-            return 'medium';
-
-        case 'small':
-            return 240;
-
-        case 240:
-            return 'small';
-
-        default:
-            return 'default';
+    if (entry) {
+        // Get the match corresponding to the input
+        return entry.find(function (value) {
+            return value !== input;
+        });
     }
+
+    return 'default';
 }
 
 function mapQualityUnits(levels) {
@@ -11267,15 +11224,7 @@ var youtube = {
                             return mapQualityUnit(instance.getPlaybackQuality());
                         },
                         set: function set(input) {
-                            var quality = input;
-
-                            // Set via API
-                            instance.setPlaybackQuality(mapQualityUnit(quality));
-
-                            // Trigger request event
-                            utils.dispatchEvent.call(player, player.media, 'qualityrequested', false, {
-                                quality: quality
-                            });
+                            instance.setPlaybackQuality(mapQualityUnit(input));
                         }
                     });
 
@@ -12941,7 +12890,8 @@ var Plyr = function () {
 
             // Stop playback
             this.stop();
-
+            // cleanup event listener
+            utils.cleanupEventListener();
             // Type specific stuff
             switch (this.provider + ':' + this.type) {
                 case 'html5:video':
@@ -13313,36 +13263,26 @@ var Plyr = function () {
     }, {
         key: 'quality',
         set: function set(input) {
-            var quality = null;
+            var config = this.config.quality;
+            var options = this.options.quality;
 
-            if (!utils.is.empty(input)) {
-                quality = Number(input);
-            }
-
-            if (!utils.is.number(quality)) {
-                quality = this.storage.get('quality');
-            }
-
-            if (!utils.is.number(quality)) {
-                quality = this.config.quality.selected;
-            }
-
-            if (!utils.is.number(quality)) {
-                quality = this.config.quality.default;
-            }
-
-            if (!this.options.quality.length) {
+            if (!options.length) {
                 return;
             }
 
-            if (!this.options.quality.includes(quality)) {
-                var closest = utils.closest(this.options.quality, quality);
+            var quality = [!utils.is.empty(input) && Number(input), this.storage.get('quality'), config.selected, config.default].find(utils.is.number);
+
+            if (!options.includes(quality)) {
+                var closest = utils.closest(options, quality);
                 this.debug.warn('Unsupported quality option: ' + quality + ', using ' + closest + ' instead');
                 quality = closest;
             }
 
+            // Trigger request event
+            utils.dispatchEvent.call(this, this.media, 'qualityrequested', false, { quality: quality });
+
             // Update config
-            this.config.quality.selected = quality;
+            config.selected = quality;
 
             // Set quality
             this.media.quality = quality;
