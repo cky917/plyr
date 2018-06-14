@@ -59,6 +59,8 @@ export function toggleListener(element, event, callback, toggle = false, passive
 
         element[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
     });
+    console.log(this.eventListeners);
+    
 }
 
 // Bind event handler

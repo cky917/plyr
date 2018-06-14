@@ -344,7 +344,7 @@ class Plyr {
         return mediaPlay.call(this.media)
             .then(args => args)
             .catch(err => {
-                utils.dispatchEvent.call(this, this.elements.container, 'error', true, err);
+                triggerEvent.call(this, this.elements.container, 'error', true, err);
             });
     }
 
@@ -1058,8 +1058,6 @@ class Plyr {
 
         // Stop playback
         this.stop();
-        // cleanup eventListener
-        utils.cleanCallback();
         // Type specific stuff
         switch (`${this.provider}:${this.type}`) {
             case 'html5:video':
