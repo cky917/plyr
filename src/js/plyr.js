@@ -29,12 +29,10 @@ import { parseUrl } from './utils/urls';
 // Private properties
 // TODO: Use a WeakMap for private globals
 // const globals = new WeakMap();
-
 // Plyr instance
 class Plyr {
     constructor(target, options) {
         this.timers = {};
-
         // State
         this.ready = false;
         this.loading = false;
@@ -71,7 +69,6 @@ class Plyr {
                 }
             })(),
         );
-
         // Elements cache
         this.elements = {
             container: null,
@@ -335,13 +332,20 @@ class Plyr {
     /**
      * Play the media, or play the advertisement (if they are not blocked)
      */
-    play() {
+    play(promiseError = false) {
         if (!is.function(this.media.play)) {
             return null;
         }
-
+        const mediaPlay = this.media.play;
+        if (promiseError) {
+            return mediaPlay;
+        }
         // Return the promise (for HTML5)
-        return this.media.play();
+        return mediaPlay.call(this.media)
+            .then(args => args)
+            .catch(err => {
+                utils.dispatchEvent.call(this, this.elements.container, 'error', true, err);
+            });
     }
 
     /**
@@ -646,8 +650,8 @@ class Plyr {
         if (speed < 0.1) {
             speed = 0.1;
         }
-        if (speed > 2.0) {
-            speed = 2.0;
+        if (speed > 4.0) {
+            speed = 4.0;
         }
 
         if (!this.config.speed.options.includes(speed)) {
@@ -983,7 +987,9 @@ class Plyr {
      * @param {function} callback - Callback for when event occurs
      */
     off(event, callback) {
-        off(this.elements.container, event, callback);
+        if (this.elements) {
+            off(this.elements.container, event, callback);
+        }
     }
 
     /**
@@ -1042,18 +1048,18 @@ class Plyr {
 
                 // Reset state
                 this.ready = false;
-
                 // Clear for garbage collection
                 setTimeout(() => {
                     this.elements = null;
                     this.media = null;
-                }, 200);
+                }, 300);
             }
         };
 
         // Stop playback
         this.stop();
-
+        // cleanup eventListener
+        utils.cleanCallback();
         // Type specific stuff
         switch (`${this.provider}:${this.type}`) {
             case 'html5:video':

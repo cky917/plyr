@@ -68,7 +68,7 @@ const ui = {
         this.muted = null;
 
         // Reset speed
-        this.speed = null;
+        this.speed = 1;
 
         // Reset loop state
         this.loop = null;

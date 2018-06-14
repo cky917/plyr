@@ -156,17 +156,17 @@ class Listeners {
                     this.player.loop = !this.player.loop;
                     break;
 
-                /* case 73:
-                    this.setLoop('start');
-                    break;
+                    /* case 73:
+                        this.setLoop('start');
+                        break;
 
-                case 76:
-                    this.setLoop();
-                    break;
+                    case 76:
+                        this.setLoop();
+                        break;
 
-                case 79:
-                    this.setLoop('end');
-                    break; */
+                    case 79:
+                        this.setLoop('end');
+                        break; */
 
                 default:
                     break;
@@ -184,16 +184,14 @@ class Listeners {
             this.lastKey = null;
         }
     }
-
     // Toggle menu
     toggleMenu(event) {
         controls.toggleMenu.call(this.player, event);
     }
-
     // Device is touch enabled
     firstTouch() {
         this.player.touch = true;
-
+        
         // Add touch class
         toggleClass(this.player.elements.container, this.player.config.classNames.isTouch, true);
 
@@ -272,6 +270,7 @@ class Listeners {
 
     // Listen for media events
     media() {
+
         // Time change on media
         on.call(this.player, this.player.media, 'timeupdate seeking seeked', event => controls.timeUpdate.call(this.player, event));
 
@@ -363,7 +362,10 @@ class Listeners {
         // Volume change
         on.call(this.player, this.player.media, 'volumechange', () => {
             // Save to storage
-            this.player.storage.set({ volume: this.player.volume, muted: this.player.muted });
+            this.player.storage.set({
+                volume: this.player.volume,
+                muted: this.player.muted,
+            });
         });
 
         // Speed change
@@ -372,13 +374,17 @@ class Listeners {
             controls.updateSetting.call(this.player, 'speed');
 
             // Save to storage
-            this.player.storage.set({ speed: this.player.speed });
+            this.player.storage.set({
+                speed: this.player.speed,
+            });
         });
 
         // Quality request
         on.call(this.player, this.player.media, 'qualityrequested', event => {
             // Save to storage
-            this.player.storage.set({ quality: event.detail.quality });
+            this.player.storage.set({
+                quality: event.detail.quality,
+            });
         });
 
         // Quality change
@@ -393,7 +399,9 @@ class Listeners {
             controls.updateSetting.call(this.player, 'captions');
 
             // Save to storage
-            this.player.storage.set({ language: this.player.language });
+            this.player.storage.set({
+                language: this.player.language,
+            });
         });
 
         // Captions toggle
@@ -402,7 +410,9 @@ class Listeners {
             controls.updateSetting.call(this.player, 'captions');
 
             // Save to storage
-            this.player.storage.set({ captions: this.player.captions.active });
+            this.player.storage.set({
+                captions: this.player.captions.active,
+            });
         });
 
         // Proxy events to container
@@ -564,7 +574,6 @@ class Listeners {
 
             const code = event.keyCode ? event.keyCode : event.which;
             const eventType = event.type;
-
             if ((eventType === 'keydown' || eventType === 'keyup') && (code !== 39 && code !== 37)) {
                 return;
             }

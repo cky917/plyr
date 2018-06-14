@@ -5481,29 +5481,16 @@ var supportsPassiveListeners = function () {
 }();
 
 // Toggle event listener
-function toggleListener(elements, event, callback) {
+function toggleListener(element, event, callback) {
     var toggle = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
-    var passive = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
 
     var _this = this;
 
+    var passive = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
     var capture = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : false;
-    var once = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : false;
 
-    // Bail if no elemetns, event, or callback
-    if (is$1.empty(elements) || is$1.empty(event) || !is$1.function(callback)) {
-        return;
-    }
-
-    // If a nodelist is passed, call itself on each node
-    if (is$1.nodeList(elements) || is$1.array(elements)) {
-        // Create listener for each node
-        Array.from(elements).forEach(function (element) {
-            if (element instanceof Node) {
-                toggleListener.call(null, element, event, callback, toggle, passive, capture);
-            }
-        });
-
+    // Bail if no element, event, or callback
+    if (!element || !('addEventListener' in element) || is$1.empty(event) || !is$1.function(callback)) {
         return;
     }
 
@@ -5526,12 +5513,12 @@ function toggleListener(elements, event, callback) {
 
     // If a single node is passed, bind the event listener
     events.forEach(function (type) {
-        if (_this && _this.eventListeners && toggle && !once) {
+        if (_this && _this.eventListeners && toggle) {
             // Cache event listener
-            _this.eventListeners.push({ elements: elements, type: type, callback: callback, options: options });
+            _this.eventListeners.push({ element: element, type: type, callback: callback, options: options });
         }
 
-        elements[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
+        element[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
     });
 }
 
@@ -5572,7 +5559,7 @@ function once(element) {
         callback.apply(this, args);
     }
 
-    toggleListener(element, events, onceCallback, true, passive, capture, true);
+    toggleListener.call(this, element, events, onceCallback, true, passive, capture);
 }
 
 // Trigger event
@@ -5602,12 +5589,12 @@ function triggerEvent(element) {
 function unbindListeners() {
     if (this && this.eventListeners) {
         this.eventListeners.forEach(function (item) {
-            var elements = item.elements,
+            var element = item.element,
                 type = item.type,
                 callback = item.callback,
                 options = item.options;
 
-            elements.removeEventListener(type, callback, options);
+            element.removeEventListener(type, callback, options);
         });
 
         this.eventListeners = [];
@@ -5968,11 +5955,7 @@ function trapFocus() {
         }
     };
 
-    if (toggle) {
-        on(this.elements.container, 'keydown', trap, false);
-    } else {
-        off(this.elements.container, 'keydown', trap, false);
-    }
+    toggleListener.call(this, this.elements.container, 'keydown', trap, toggle, false);
 }
 
 // Toggle aria-pressed state on a toggle button
@@ -7570,7 +7553,7 @@ var controls = {
         if (is$1.array(options)) {
             this.options.speed = options;
         } else if (this.isHTML5 || this.isVimeo) {
-            this.options.speed = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+            this.options.speed = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4];
         }
 
         // Set options if passed and filter based on config
@@ -7750,7 +7733,7 @@ var controls = {
             };
 
             // Listen for the transition finishing and restore auto height/width
-            once(container, transitionEndEvent, restore);
+            once.call(this, container, transitionEndEvent, restore);
 
             // Set dimensions to target
             container.style.width = size.width + 'px';
@@ -8209,19 +8192,17 @@ function parseUrl(input) {
 
 // Convert object to URLSearchParams
 function buildUrlParams(input) {
-    if (!is$1.object(input)) {
-        return '';
-    }
-
     var params = new URLSearchParams();
 
-    Object.entries(input).forEach(function (_ref) {
-        var _ref2 = slicedToArray(_ref, 2),
-            key = _ref2[0],
-            value = _ref2[1];
+    if (is$1.object(input)) {
+        Object.entries(input).forEach(function (_ref) {
+            var _ref2 = slicedToArray(_ref, 2),
+                key = _ref2[0],
+                value = _ref2[1];
 
-        params.set(key, value);
-    });
+            params.set(key, value);
+        });
+    }
 
     return params;
 }
@@ -8617,7 +8598,7 @@ var defaults$1 = {
     // Speed default and options to display
     speed: {
         selected: 1,
-        options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+        options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4]
     },
 
     // Keyboard shortcut settings
@@ -8951,7 +8932,6 @@ function onChange() {
     if (!this.enabled) {
         return;
     }
-
     // Update toggle button
     var button = this.player.elements.buttons.fullscreen;
     if (is$1.element(button)) {
@@ -9264,7 +9244,7 @@ var ui = {
         this.muted = null;
 
         // Reset speed
-        this.speed = null;
+        this.speed = 1;
 
         // Reset loop state
         this.loop = null;
@@ -9605,7 +9585,6 @@ var Listeners = function () {
                 this.lastKey = null;
             }
         }
-
         // Toggle menu
 
     }, {
@@ -9613,7 +9592,6 @@ var Listeners = function () {
         value: function toggleMenu(event) {
             controls.toggleMenu.call(this.player, event);
         }
-
         // Device is touch enabled
 
     }, {
@@ -9641,7 +9619,7 @@ var Listeners = function () {
             toggleListener.call(this.player, document.body, 'click', this.toggleMenu, toggle);
 
             // Detect touch by events
-            once(document.body, 'touchstart', this.firstTouch);
+            once.call(this.player, document.body, 'touchstart', this.firstTouch);
         }
 
         // Container listeners
@@ -9814,7 +9792,10 @@ var Listeners = function () {
             // Volume change
             on.call(this.player, this.player.media, 'volumechange', function () {
                 // Save to storage
-                _this3.player.storage.set({ volume: _this3.player.volume, muted: _this3.player.muted });
+                _this3.player.storage.set({
+                    volume: _this3.player.volume,
+                    muted: _this3.player.muted
+                });
             });
 
             // Speed change
@@ -9823,13 +9804,17 @@ var Listeners = function () {
                 controls.updateSetting.call(_this3.player, 'speed');
 
                 // Save to storage
-                _this3.player.storage.set({ speed: _this3.player.speed });
+                _this3.player.storage.set({
+                    speed: _this3.player.speed
+                });
             });
 
             // Quality request
             on.call(this.player, this.player.media, 'qualityrequested', function (event) {
                 // Save to storage
-                _this3.player.storage.set({ quality: event.detail.quality });
+                _this3.player.storage.set({
+                    quality: event.detail.quality
+                });
             });
 
             // Quality change
@@ -9844,7 +9829,9 @@ var Listeners = function () {
                 controls.updateSetting.call(_this3.player, 'captions');
 
                 // Save to storage
-                _this3.player.storage.set({ language: _this3.player.language });
+                _this3.player.storage.set({
+                    language: _this3.player.language
+                });
             });
 
             // Captions toggle
@@ -9853,7 +9840,9 @@ var Listeners = function () {
                 controls.updateSetting.call(_this3.player, 'captions');
 
                 // Save to storage
-                _this3.player.storage.set({ captions: _this3.player.captions.active });
+                _this3.player.storage.set({
+                    captions: _this3.player.captions.active
+                });
             });
 
             // Proxy events to container
@@ -9912,7 +9901,9 @@ var Listeners = function () {
             };
 
             // Play/pause toggle
-            bind(this.player.elements.buttons.play, 'click', this.player.togglePlay, 'play');
+            Array.from(this.player.elements.buttons.play).forEach(function (button) {
+                bind(button, 'click', _this4.player.togglePlay, 'play');
+            });
 
             // Pause
             bind(this.player.elements.buttons.restart, 'click', this.player.restart, 'restart');
@@ -9994,7 +9985,6 @@ var Listeners = function () {
 
                 var code = event.keyCode ? event.keyCode : event.which;
                 var eventType = event.type;
-
                 if ((eventType === 'keydown' || eventType === 'keyup') && code !== 39 && code !== 37) {
                     return;
                 }
@@ -10052,8 +10042,10 @@ var Listeners = function () {
 
             // Polyfill for lower fill in <input type="range"> for webkit
             if (browser.isWebkit) {
-                bind(getElements.call(this.player, 'input[type="range"]'), 'input', function (event) {
-                    controls.updateRangeFill.call(_this4.player, event.target);
+                Array.from(getElements.call(this.player, 'input[type="range"]')).forEach(function (element) {
+                    bind(element, 'input', function (event) {
+                        return controls.updateRangeFill.call(_this4.player, event.target);
+                    });
                 });
             }
 
@@ -12254,7 +12246,6 @@ var source = {
 // Private properties
 // TODO: Use a WeakMap for private globals
 // const globals = new WeakMap();
-
 // Plyr instance
 
 var Plyr = function () {
@@ -12264,7 +12255,6 @@ var Plyr = function () {
         classCallCheck(this, Plyr);
 
         this.timers = {};
-
         // State
         this.ready = false;
         this.loading = false;
@@ -12295,7 +12285,6 @@ var Plyr = function () {
                 return {};
             }
         }());
-
         // Elements cache
         this.elements = {
             container: null,
@@ -12544,12 +12533,23 @@ var Plyr = function () {
          * Play the media, or play the advertisement (if they are not blocked)
          */
         value: function play() {
+            var _this2 = this;
+
+            var promiseError = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+
             if (!is$1.function(this.media.play)) {
                 return null;
             }
-
+            var mediaPlay = this.media.play;
+            if (promiseError) {
+                return mediaPlay;
+            }
             // Return the promise (for HTML5)
-            return this.media.play();
+            return mediaPlay.call(this.media).then(function (args) {
+                return args;
+            }).catch(function (err) {
+                utils.dispatchEvent.call(_this2, _this2.elements.container, 'error', true, err);
+            });
         }
 
         /**
@@ -12774,7 +12774,7 @@ var Plyr = function () {
     }, {
         key: 'once',
         value: function once$$1(event, callback) {
-            once(this.elements.container, event, callback);
+            once.call(this, this.elements.container, event, callback);
         }
         /**
          * Remove event listeners
@@ -12785,7 +12785,9 @@ var Plyr = function () {
     }, {
         key: 'off',
         value: function off$$1(event, callback) {
-            off(this.elements.container, event, callback);
+            if (this.elements) {
+                off(this.elements.container, event, callback);
+            }
         }
 
         /**
@@ -12799,7 +12801,7 @@ var Plyr = function () {
     }, {
         key: 'destroy',
         value: function destroy(callback) {
-            var _this2 = this;
+            var _this3 = this;
 
             var soft = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
@@ -12812,22 +12814,22 @@ var Plyr = function () {
                 document.body.style.overflow = '';
 
                 // GC for embed
-                _this2.embed = null;
+                _this3.embed = null;
 
                 // If it's a soft destroy, make minimal changes
                 if (soft) {
-                    if (Object.keys(_this2.elements).length) {
+                    if (Object.keys(_this3.elements).length) {
                         // Remove elements
-                        removeElement(_this2.elements.buttons.play);
-                        removeElement(_this2.elements.captions);
-                        removeElement(_this2.elements.controls);
-                        removeElement(_this2.elements.wrapper);
+                        removeElement(_this3.elements.buttons.play);
+                        removeElement(_this3.elements.captions);
+                        removeElement(_this3.elements.controls);
+                        removeElement(_this3.elements.wrapper);
 
                         // Clear for GC
-                        _this2.elements.buttons.play = null;
-                        _this2.elements.captions = null;
-                        _this2.elements.controls = null;
-                        _this2.elements.wrapper = null;
+                        _this3.elements.buttons.play = null;
+                        _this3.elements.captions = null;
+                        _this3.elements.controls = null;
+                        _this3.elements.wrapper = null;
                     }
 
                     // Callback
@@ -12836,33 +12838,33 @@ var Plyr = function () {
                     }
                 } else {
                     // Unbind listeners
-                    unbindListeners.call(_this2);
+                    unbindListeners.call(_this3);
 
                     // Replace the container with the original element provided
-                    replaceElement(_this2.elements.original, _this2.elements.container);
+                    replaceElement(_this3.elements.original, _this3.elements.container);
 
                     // Event
-                    triggerEvent.call(_this2, _this2.elements.original, 'destroyed', true);
+                    triggerEvent.call(_this3, _this3.elements.original, 'destroyed', true);
 
                     // Callback
                     if (is$1.function(callback)) {
-                        callback.call(_this2.elements.original);
+                        callback.call(_this3.elements.original);
                     }
 
                     // Reset state
-                    _this2.ready = false;
-
+                    _this3.ready = false;
                     // Clear for garbage collection
                     setTimeout(function () {
-                        _this2.elements = null;
-                        _this2.media = null;
-                    }, 200);
+                        _this3.elements = null;
+                        _this3.media = null;
+                    }, 300);
                 }
             };
 
             // Stop playback
             this.stop();
-
+            // cleanup eventListener
+            utils.cleanCallback();
             // Type specific stuff
             switch (this.provider + ':' + this.type) {
                 case 'html5:video':
@@ -13201,8 +13203,8 @@ var Plyr = function () {
             if (speed < 0.1) {
                 speed = 0.1;
             }
-            if (speed > 2.0) {
-                speed = 2.0;
+            if (speed > 4.0) {
+                speed = 4.0;
             }
 
             if (!this.config.speed.options.includes(speed)) {

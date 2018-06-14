@@ -12,7 +12,6 @@ function onChange() {
     if (!this.enabled) {
         return;
     }
-
     // Update toggle button
     const button = this.player.elements.buttons.fullscreen;
     if (is.element(button)) {
