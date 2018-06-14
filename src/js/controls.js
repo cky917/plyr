@@ -88,7 +88,6 @@ const controls = {
         const namespace = 'http://www.w3.org/2000/svg';
         const iconUrl = controls.getIconUrl.call(this);
         const iconPath = `${!iconUrl.cors ? iconUrl.url : ''}#${this.config.iconPrefix}`;
-
         // Create <svg>
         const icon = document.createElementNS(namespace, 'svg');
         setAttributes(
@@ -111,7 +110,6 @@ const controls = {
         } else {
             use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', path);
         }
-
         // Add <use> to <svg>
         icon.appendChild(use);
 

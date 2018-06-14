@@ -59,8 +59,6 @@ export function toggleListener(element, event, callback, toggle = false, passive
 
         element[toggle ? 'addEventListener' : 'removeEventListener'](type, callback, options);
     });
-    console.log(this.eventListeners);
-    
 }
 
 // Bind event handler
@@ -89,7 +87,6 @@ export function triggerEvent(element, type = '', bubbles = false, detail = {}) {
     if (!is.element(element) || is.empty(type)) {
         return;
     }
-
     // Create and dispatch the event
     const event = new CustomEvent(type, {
         bubbles,

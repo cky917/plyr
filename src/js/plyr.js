@@ -343,8 +343,8 @@ class Plyr {
         // Return the promise (for HTML5)
         return mediaPlay.call(this.media)
             .then(args => args)
-            .catch(err => {
-                triggerEvent.call(this, this.elements.container, 'error', true, err);
+            .catch(() => {
+                triggerEvent.call(this, this.elements.container, 'error', true);
             });
     }
 
